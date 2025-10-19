@@ -4,8 +4,8 @@ import sounddevice as sd
 import soundfile as sf
 import pyfiglet
 
-AUDIO_FILE   = "No. 1 Party Anthem.mp3"   
-START_TIME   = 137  
+AUDIO_FILE   = "No. 1 Party Anthem.mp3" #nombre de la cancion
+START_TIME   = 137 
 
 LRC_FOLDER   = os.path.expanduser("~/lyrics")
 BLOCKSIZE    = 2048
