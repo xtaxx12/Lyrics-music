@@ -6,8 +6,6 @@ import pyfiglet
 
 AUDIO_FILE   = "No. 1 Party Anthem.mp3" #nombre de la cancion
 START_TIME   = 137 
-
-LRC_FOLDER   = os.path.expanduser("~/lyrics")
 BLOCKSIZE    = 2048
 
 
@@ -93,8 +91,6 @@ if "-" in base:
 lyrics_path = None
 lrc_text = None
 
-# Try multiple sources
-print(f"Searching lyrics for: '{title_guess}' by '{artist_guess}'")
 
 # Try LRCLIB first
 lrc_text = fetch_lrc_from_lrclib(title_guess, artist_guess)
@@ -183,6 +179,8 @@ def add_text_effects(text, effect_type="glow"):
         return f"┃ {text} ┃"
     return text
 
+
+
 def render_lyrics_block(idx, r, g, b, play_time):
     lines = []
     term_width = min(80, shutil.get_terminal_size().columns)
@@ -232,6 +230,8 @@ def render_lyrics_block(idx, r, g, b, play_time):
         lines.append(dim_color(centered_info, r, g, b, 0.6))
     
     return "\n".join(lines)
+
+
 
 def create_progress_bar(current_time, total_time, width=40):
     """Create a progress bar for the song"""
@@ -285,6 +285,8 @@ def callback(outdata, frames, time_info, status):
     screen.append(colorize(centered_title, r, g, b))
     screen.append("")
     
+
+    
     # Visualizer
     for row in range(center*2):
         line=[]
@@ -319,6 +321,7 @@ def callback(outdata, frames, time_info, status):
 
     if lyrics:
         screen.append("")
+        
         screen.append(render_lyrics_block(lyric_index, r, g, b, play_time))
 
     sys.stdout.write("\033[H\033[J" + "\n".join(screen))
