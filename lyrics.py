@@ -5,7 +5,7 @@ import soundfile as sf
 import pyfiglet
 
 AUDIO_FILE   = "Wham! - Last Christmas.mp3" #nombre de la cancion
-START_TIME   = 232
+START_TIME   = 179
 BLOCKSIZE    = 2048
 
 
