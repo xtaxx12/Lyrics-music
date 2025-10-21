@@ -4,8 +4,8 @@ import sounddevice as sd
 import soundfile as sf
 import pyfiglet
 
-AUDIO_FILE   = "No. 1 Party Anthem.mp3" #nombre de la cancion
-START_TIME   = 137 
+AUDIO_FILE   = "Wham! - Last Christmas.mp3" #nombre de la cancion
+START_TIME   = 232
 BLOCKSIZE    = 2048
 
 
@@ -132,19 +132,14 @@ if data.ndim > 1:
 data = data / np.max(np.abs(data))
 start_idx = int(START_TIME * samplerate)
 
-term_columns, _ = shutil.get_terminal_size((200, 80))
-columns = min(80, term_columns)
-center  = 6
+# No need for visualizer variables anymore
 lyric_index = 0
 for i, (t, _) in enumerate(lyrics):
     if t >= START_TIME:
         lyric_index = max(0, i - 1)
         break
 
-def smooth(vals, window=5):
-    if len(vals) < window: return vals
-    k = np.ones(window)/window
-    return np.convolve(vals, k, mode="same")
+
 
 def hsv_to_rgb(h,s,v):
     i = int(h*6); f = h*6 - i
@@ -174,10 +169,72 @@ def add_text_effects(text, effect_type="glow"):
     if effect_type == "glow":
         return f"✨ {text} ✨"
     elif effect_type == "highlight":
-        return f"▶ {text} ◀"
+        return text  # Sin símbolos ▶ ◀
     elif effect_type == "box":
         return f"┃ {text} ┃"
     return text
+
+def create_christmas_tree(play_time):
+    """Create animated Christmas tree with changing colors"""
+    # Christmas colors
+    colors = [
+        (255, 0, 0),    # Red
+        (0, 255, 0),    # Green
+        (0, 0, 255),    # Blue
+        (255, 255, 0),  # Yellow
+        (255, 0, 255),  # Magenta
+        (0, 255, 255),  # Cyan
+        (255, 165, 0),  # Orange
+        (255, 255, 255) # White
+    ]
+    
+    # Tree structure with ornament positions marked as 'o'
+    tree_pattern = [
+        "       ⭐       ",
+        "      ooo      ",
+        "     ooooo     ",
+        "    ooooooo    ",
+        "   ooooooooo   ",
+        "  ooooooooooo  ",
+        " ooooooooooooo ",
+        "ooooooooooooooo",
+        "      |||      ",
+        "      |||      ",
+        "      |||      "
+    ]
+    
+    # Animation speed - change colors every 0.5 seconds
+    time_factor = int(play_time * 2)
+    
+    tree_lines = []
+    for line in tree_pattern:
+        colored_line = ""
+        ornament_count = 0
+        
+        for char in line:
+            if char == 'o':
+                # Alternate colors for each ornament
+                color_index = (ornament_count + time_factor) % len(colors)
+                r, g, b = colors[color_index]
+                colored_line += f"\033[38;2;{r};{g};{b}m✦\033[0m"
+                ornament_count += 1
+            elif char == '⭐':
+                # Star at top - golden color with sparkle effect
+                if time_factor % 2 == 0:
+                    colored_line += f"\033[38;2;255;215;0m⭐\033[0m"
+                else:
+                    colored_line += f"\033[38;2;255;255;255m✨\033[0m"
+            elif char == '|':
+                # Brown trunk
+                colored_line += f"\033[38;2;139;69;19m|\033[0m"
+            else:
+                colored_line += char
+        
+        tree_lines.append(colored_line)
+    
+    return tree_lines
+
+
 
 
 
@@ -231,6 +288,31 @@ def render_lyrics_block(idx, r, g, b, play_time):
     
     return "\n".join(lines)
 
+def render_lyrics_with_christmas_tree(idx, r, g, b, play_time):
+    """Render lyrics with animated Christmas tree on the left"""
+    # Get Christmas tree
+    tree_lines = create_christmas_tree(play_time)
+    
+    # Get lyrics content
+    lyrics_content = render_lyrics_block(idx, r, g, b, play_time).split('\n')
+    
+    # Combine tree and lyrics
+    combined_lines = []
+    max_lines = max(len(tree_lines), len(lyrics_content))
+    
+    for i in range(max_lines):
+        tree_part = tree_lines[i] if i < len(tree_lines) else " " * 16
+        lyric_part = lyrics_content[i] if i < len(lyrics_content) else ""
+        
+        # Add spacing between tree and lyrics
+        spacing = "    "
+        combined_line = tree_part + spacing + lyric_part
+        combined_lines.append(combined_line)
+    
+    return "\n".join(combined_lines)
+
+
+
 
 
 def create_progress_bar(current_time, total_time, width=40):
@@ -266,11 +348,6 @@ def callback(outdata, frames, time_info, status):
         while lyric_index + 1 < len(lyrics) and play_time >= lyrics[lyric_index + 1][0]:
             lyric_index += 1
 
-    step   = max(1, len(chunk)//columns)
-    levels = np.abs(chunk[::step])
-    levels = smooth(levels, window=6)
-    levels = np.interp(np.clip(levels,0,1), [0,1], [0,center-1]).astype(int)
-
     # More dynamic color transitions
     hue = (play_time * 0.1) % 1.0  # Smooth color transition
     saturation = 0.7 + 0.3 * np.sin(play_time * 0.5)  # Pulsing saturation
@@ -280,37 +357,10 @@ def callback(outdata, frames, time_info, status):
     
     # Add title at top
     title_text = f"🎵 {title_guess} - {artist_guess} 🎵"
-    term_width = min(80, shutil.get_terminal_size().columns)
+    term_width = min(120, shutil.get_terminal_size().columns)
     centered_title = center_text(title_text, term_width)
     screen.append(colorize(centered_title, r, g, b))
     screen.append("")
-    
-
-    
-    # Visualizer
-    for row in range(center*2):
-        line=[]
-        for col, lvl in enumerate(levels):
-            # Add some sparkle effects on high levels
-            char = " "
-            if row==center:
-                char = "─"
-            elif row<center and (center-row)<=lvl:
-                if lvl >= center-1 and col % 3 == int(play_time*2) % 3:
-                    char = "✦"  # Sparkle effect
-                else:
-                    char = "█"
-            elif row>center and (row-center)<=lvl:
-                if lvl >= center-1 and col % 3 == int(play_time*2) % 3:
-                    char = "✦"  # Sparkle effect
-                else:
-                    char = "█"
-            
-            if char != " ":
-                line.append(colorize(char, r, g, b))
-            else:
-                line.append(" ")
-        screen.append("".join(line))
 
     # Progress bar
     total_time = len(data) / samplerate
@@ -322,7 +372,8 @@ def callback(outdata, frames, time_info, status):
     if lyrics:
         screen.append("")
         
-        screen.append(render_lyrics_block(lyric_index, r, g, b, play_time))
+        # Show Christmas tree with lyrics
+        screen.append(render_lyrics_with_christmas_tree(lyric_index, r, g, b, play_time))
 
     sys.stdout.write("\033[H\033[J" + "\n".join(screen))
     sys.stdout.flush()
